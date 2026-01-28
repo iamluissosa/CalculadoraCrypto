@@ -189,60 +189,76 @@ def main(page: ft.Page):
         rows=[]
     )
 
-    # --- UPDATE LOGIC ---
+    # Debug/Status Text
+    status_txt = ft.Text("Estado: Iniciando...", size=12, color="yellow")
+
     def update_data():
-        # Show loading state if needed, or just update silently
-        bcv = get_bcv_krea()
-        p2p_data = get_p2p_market_depth(rows=10)
-        
-        page.data["bcv_usd"] = bcv["USD"]
-        page.data["bcv_eur"] = bcv["EUR"]
-        
-        prices = [p['Precio'] for p in p2p_data]
-        page.data["p2p_price"] = sum(prices) / len(prices) if prices else 0.0
-        
-        p_avg = page.data["p2p_price"]
-        b_usd = page.data["bcv_usd"]
-        
-        page.data["mixed_avg"] = (p_avg + b_usd) / 2 if (p_avg > 0 and b_usd > 0) else 0.0
-        
-        # Update UI Refs
-        ref_bcv_usd.current.value = f"{bcv['USD']:,.2f}"
-        ref_bcv_eur.current.value = f"{bcv['EUR']:,.2f}"
-        ref_p2p_avg.current.value = f"{p_avg:,.2f}"
-        ref_mixed.current.value = f"{page.data['mixed_avg']:,.2f}"
-        
-        # Update Table
-        new_rows = []
-        for item in p2p_data:
-            new_rows.append(ft.DataRow(cells=[
-                ft.DataCell(ft.Text(item['Comerciante'], size=12, width=80, no_wrap=True, overflow=ft.TextOverflow.ELLIPSIS)),
-                ft.DataCell(ft.Text(f"{item['Precio']:,.2f}", weight=ft.FontWeight.BOLD, size=12)),
-                ft.DataCell(ft.Text(f"{item['Min']:,.0f}-{item['Max']:,.0f}", size=10, color=ft.colors.WHITE54)),
-            ], on_select_changed=lambda e, url=item['Url']: page.launch_url(url)))
-        
-        p2p_table.rows = new_rows
-        
-        calculate() # Refresh calc with new rates
-        page.update()
+        try:
+            # Show loading state if needed, or just update silently
+            bcv = get_bcv_krea()
+            p2p_data = get_p2p_market_depth(rows=10)
+            
+            page.data["bcv_usd"] = bcv["USD"]
+            page.data["bcv_eur"] = bcv["EUR"]
+            
+            prices = [p['Precio'] for p in p2p_data]
+            page.data["p2p_price"] = sum(prices) / len(prices) if prices else 0.0
+            
+            p_avg = page.data["p2p_price"]
+            b_usd = page.data["bcv_usd"]
+            
+            page.data["mixed_avg"] = (p_avg + b_usd) / 2 if (p_avg > 0 and b_usd > 0) else 0.0
+            
+            # Update UI Refs
+            if ref_bcv_usd.current: ref_bcv_usd.current.value = f"{bcv['USD']:,.2f}"
+            if ref_bcv_eur.current: ref_bcv_eur.current.value = f"{bcv['EUR']:,.2f}"
+            if ref_p2p_avg.current: ref_p2p_avg.current.value = f"{p_avg:,.2f}"
+            if ref_mixed.current: ref_mixed.current.value = f"{page.data['mixed_avg']:,.2f}"
+            
+            # Update Table
+            new_rows = []
+            for item in p2p_data:
+                new_rows.append(ft.DataRow(cells=[
+                    ft.DataCell(ft.Text(item['Comerciante'], size=12, width=80, no_wrap=True, overflow=ft.TextOverflow.ELLIPSIS)),
+                    ft.DataCell(ft.Text(f"{item['Precio']:,.2f}", weight=ft.FontWeight.BOLD, size=12)),
+                    ft.DataCell(ft.Text(f"{item['Min']:,.0f}-{item['Max']:,.0f}", size=10, color=ft.colors.WHITE54)),
+                ], on_select_changed=lambda e, url=item['Url']: page.launch_url(url)))
+            
+            p2p_table.rows = new_rows
+            
+            calculate() # Refresh calc with new rates
+            
+            status_txt.value = f"Actualizado: {time.strftime('%H:%M:%S')}"
+            status_txt.color = "green"
+            page.update()
+        except Exception as e:
+            status_txt.value = f"Error en update: {str(e)}"
+            status_txt.color = "red"
+            page.update()
 
     def background_loop():
+        time.sleep(2) # Give UI time to render
         while True:
             update_data()
             time.sleep(60) # Auto refresh every 60s
 
     # Add components
-    page.add(
-        header,
-        ft.Divider(color="transparent", height=10),
-        cards_row_1,
-        cards_row_2,
-        ft.Divider(color="transparent", height=20),
-        calc_container,
-        ft.Divider(color="transparent", height=20),
-        ft.Text("Mercado P2P (Top 10)", size=16, weight=ft.FontWeight.BOLD),
-        ft.Container(content=p2p_table, bgcolor=CARD_BG_DARK, border_radius=10, padding=10),
-    )
+    try:
+        page.add(
+            header,
+            ft.Divider(color="transparent", height=10),
+            cards_row_1,
+            cards_row_2,
+            ft.Divider(color="transparent", height=20),
+            calc_container,
+            ft.Divider(color="transparent", height=20),
+            ft.Text("Mercado P2P (Top 10)", size=16, weight=ft.FontWeight.BOLD),
+            ft.Container(content=p2p_table, bgcolor=CARD_BG_DARK, border_radius=10, padding=10),
+            ft.Divider(color="transparent", height=10),
+            status_txt
+        )
+    except Exception as ex:
+        page.add(ft.Text(f"Error UI: {ex}", color="red", size=20))
     
     # Start BG Thread
     # Run the background loop in a separate thread to avoid blocking the UI
