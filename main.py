@@ -6,18 +6,18 @@ import threading
 # --- COLORS ---
 BG_COLOR = "#0f172a"
 CARD_BG_BLUE = ft.LinearGradient(
-    begin=ft.alignment.top_left,
-    end=ft.alignment.bottom_right,
+    begin=ft.Alignment(-1, -1),
+    end=ft.Alignment(1, 1),
     colors=["#3b82f6", "#2563eb"],
 )
 CARD_BG_ORANGE = ft.LinearGradient(
-    begin=ft.alignment.top_left,
-    end=ft.alignment.bottom_right,
+    begin=ft.Alignment(-1, -1),
+    end=ft.Alignment(1, 1),
     colors=["#f97316", "#ea580c"],
 )
 CARD_BG_TEAL = ft.LinearGradient(
-    begin=ft.alignment.top_left,
-    end=ft.alignment.bottom_right,
+    begin=ft.Alignment(-1, -1),
+    end=ft.Alignment(1, 1),
     colors=["#14b8a6", "#0d9488"],
 )
 CARD_BG_DARK = "#1e293b"
