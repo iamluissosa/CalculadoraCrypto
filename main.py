@@ -1,7 +1,7 @@
 import flet as ft
-import requests
 import time
 import threading
+
 
 # --- COLORS ---
 BG_COLOR = "#0f172a"
@@ -27,6 +27,7 @@ TEXT_COLOR = "white"
 def get_bcv_krea():
     url = "https://kreatickets.com/pagomovil/obtener_bcv.php"
     try:
+        import requests
         headers = {"User-Agent": "Mozilla/5.0"}
         resp = requests.get(url, headers=headers, timeout=8)
         if resp.status_code == 200:
@@ -40,6 +41,7 @@ def get_p2p_market_depth(fiat="VES", crypto="USDT", trade_type="BUY", rows=20):
     headers = {"Content-Type": "application/json"}
     data = {"fiat": fiat, "page": 1, "rows": rows, "tradeType": trade_type, "asset": crypto, "proMerchantAds": False, "publisherType": None}
     try:
+        import requests
         resp = requests.post(url, json=data, headers=headers, timeout=3).json()
         ads = resp['data']
         clean = []
