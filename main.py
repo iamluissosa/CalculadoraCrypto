@@ -244,13 +244,9 @@ def main(page: ft.Page):
         ft.Container(content=p2p_table, bgcolor=CARD_BG_DARK, border_radius=10, padding=10),
     )
     
-    # Run initial update
-    update_data()
-    
     # Start BG Thread
-    # Note: In Flet strict calling from threads to UI requires care, but page.update is thread-safe mostly.
-    # ideally use page.run_task but threading is standard python.
+    # Run the background loop in a separate thread to avoid blocking the UI
     t = threading.Thread(target=background_loop, daemon=True)
-    # t.start() # Disabled for now to avoid infinite loops in agent env, user can uncomment for prod
+    t.start()
 
 ft.app(target=main)
