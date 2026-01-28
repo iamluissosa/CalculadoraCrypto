@@ -20,20 +20,19 @@ jobs:
         with:
           python-version: '3.11'
 
-      # Install Flutter explicitly to avoid Flet asking for permission interactively
+      # Install Flutter explicitly. Flet is asking for a very new version (likely from main/master channel)
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
-          channel: stable
-          flutter-version: '3.27.1' # Pinning a recent stable version compatible with Flet
+          channel: master # Access latest versions
           
       - name: Install Flet
         run: pip install flet
 
       - name: Build APK
-        # Use --no-rich usage if possible or just rely on pre-installed flutter
+        # Pipe 'yes' to automatically accept any prompts
         run: |
-          flet build apk --project "Calculadora Crypto" --org "com.antigravity.crypto" --verbose
+          yes | flet build apk --project "Calculadora Crypto" --org "com.antigravity.crypto" --verbose
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
