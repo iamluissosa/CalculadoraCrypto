@@ -26,8 +26,10 @@ jobs:
         with:
           channel: master # Access latest versions
           
-      - name: Install Flet
-        run: pip install flet
+      - name: Install Dependencies
+        run: |
+          pip install -r requirements.txt
+          pip install flet # Ensure flet-cli is available even if requirements differs
 
       - name: Build APK
         # Pipe 'yes' to automatically accept any prompts

@@ -257,12 +257,18 @@ def main(page: ft.Page):
         ], scroll="always") # Enable scroll on column
 
         # Add everything to page via RefreshIndicator
-        page.add(
-            ft.RefreshIndicator(
-                on_refresh=fetch_data,
-                content=ft.Container(main_column, padding=20)
+        # Add to page (Safe RefreshIndicator check)
+        if hasattr(ft, "RefreshIndicator"):
+            page.add(
+                ft.RefreshIndicator(
+                    on_refresh=fetch_data,
+                    content=ft.Container(main_column, padding=20)
+                )
             )
-        )
+        else:
+            # Fallback for older Flet versions: Just show content w/o Pull-to-Refresh
+            # The 'Actualizar Todo' button is already there.
+            page.add(ft.Container(main_column, padding=20))
 
         # Start Background Load
         import threading
