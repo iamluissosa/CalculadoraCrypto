@@ -102,11 +102,15 @@ def main(page: ft.Page):
                         p2p_table.rows.append(
                             ft.DataRow(
                                 cells=[
-                                    ft.DataCell(ft.Text(nick, size=12, width=80, no_wrap=True, overflow=ft.TextOverflow.ELLIPSIS)),
+                                    ft.DataCell(
+                                        ft.Container(
+                                            content=ft.Text(nick, size=12, width=80, no_wrap=True, overflow=ft.TextOverflow.ELLIPSIS, color="blue"),
+                                            on_click=lambda e, u=profile_url: page.launch_url(u)
+                                        )
+                                    ),
                                     ft.DataCell(ft.Text(f"{price:,.2f}", weight="bold", size=12)),
                                     ft.DataCell(ft.Text(f"{min_limit:,.0f} - {max_limit:,.0f}", size=10, color="grey")),
                                 ],
-                                on_select_changed=lambda e, u=profile_url: page.launch_url(u)
                             )
                         )
                     
