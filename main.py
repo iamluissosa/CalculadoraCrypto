@@ -29,6 +29,7 @@ def main(page: ft.Page):
         txt_bcv = ft.Text("0.00", size=24, weight="bold")
         txt_paralelo = ft.Text("0.00", size=24, weight="bold")
         txt_binance = ft.Text("0.00", size=24, weight="bold")
+        txt_mixed = ft.Text("0.00", size=24, weight="bold")
         
         calc_input = ft.TextField(value="1", label="Monto USD", keyboard_type="number")
         lbl_result = ft.Text("0.00 Bs", size=20, weight="bold", color="green")
@@ -39,6 +40,7 @@ def main(page: ft.Page):
                 ft.DataColumn(ft.Text("Comerciante")),
                 ft.DataColumn(ft.Text("Precio"), numeric=True),
                 ft.DataColumn(ft.Text("Límites (Bs)")),
+                ft.DataColumn(ft.Text("Pagos")),
             ],
             rows=[],
             border=ft.border.all(1, "white10"),
@@ -92,10 +94,12 @@ def main(page: ft.Page):
                         user_no = advertiser['userNo']
                         nick = advertiser['nickName']
                         
-                        # Limits
+                        # Limits and Methods
                         min_limit = float(adv['minSingleTransAmount'])
                         max_limit = float(adv['dynamicMaxSingleTransAmount'])
-                        
+                        methods = [m['identifier'] for m in adv['tradeMethods']][:2]
+                        methods_str = ", ".join(methods)
+
                         # Build Row
                         profile_url = f"https://p2p.binance.com/es/advertiserDetail?advertiserNo={user_no}"
                         
@@ -109,7 +113,8 @@ def main(page: ft.Page):
                                         )
                                     ),
                                     ft.DataCell(ft.Text(f"{price:,.2f}", weight="bold", size=12)),
-                                    ft.DataCell(ft.Text(f"{min_limit:,.0f} - {max_limit:,.0f}", size=10, color="grey")),
+                                    ft.DataCell(ft.Text(f"{min_limit:,.0f}-{max_limit:,.0f}", size=10, color="grey")),
+                                    ft.DataCell(ft.Text(methods_str, size=10, width=50, no_wrap=True, overflow=ft.TextOverflow.ELLIPSIS)),
                                 ],
                             )
                         )
@@ -123,6 +128,13 @@ def main(page: ft.Page):
                 txt_paralelo.value = f"{state['rates']['Paralelo']:,.2f}"
                 txt_binance.value = f"{state['rates']['Binance']:,.2f}" # Average
                 
+                # Mixed Average
+                if state['rates']['BCV'] > 0 and state['rates']['Binance'] > 0:
+                    mixed = (state['rates']['BCV'] + state['rates']['Binance']) / 2
+                    txt_mixed.value = f"{mixed:,.2f}"
+                else:
+                    txt_mixed.value = "0.00"
+
                 lbl_status.value = f"Actualizado: {time.strftime('%H:%M:%S')}"
                 lbl_status.color = "green"
                 calculate(None)
@@ -174,6 +186,7 @@ def main(page: ft.Page):
             ft.Container(height=5),
             ft.Row([
                 card("Binance", txt_binance, "yellow"),
+                card("Media Mixta", txt_mixed, "purple"),
             ]),
             ft.Divider(),
             ft.Text("Calculadora Rápida", size=14, weight="bold"),
