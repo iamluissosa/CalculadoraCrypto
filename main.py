@@ -69,14 +69,15 @@ def main(page: ft.Page):
                         state['rates']['Paralelo'] = float(item['promedio'])
                 
                 # 2. DolarAPI (Euro)
+                # 2. Euro (ExchangeRate-API fallback for BCV equivalent)
                 try:
-                    req_eur = Request("https://ve.dolarapi.com/v1/euros", headers={"User-Agent": "Mozilla/5.0"})
+                    req_eur = Request("https://api.exchangerate-api.com/v4/latest/EUR", headers={"User-Agent": "Mozilla/5.0"})
                     with urlopen(req_eur, timeout=5) as resp_eur:
                         data_eur = json.loads(resp_eur.read().decode())
-                    for item in data_eur:
-                        if item['fuente'] == 'oficial':
-                             state['rates']['Euro'] = float(item['promedio'])
-                except:
+                        if 'VES' in data_eur['rates']:
+                            state['rates']['Euro'] = float(data_eur['rates']['VES'])
+                except Exception as e:
+                    print(f"Euro error: {e}")
                     state['rates']['Euro'] = 0.0
 
                 # 3. Binance P2P
