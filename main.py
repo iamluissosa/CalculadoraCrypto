@@ -7,6 +7,9 @@ import time
 # --- CONSTANTS ---
 BG_COLOR = "#0f172a"
 CARD_COLOR = "#1e293b"
+CURRENT_VERSION = "1.0.1"
+REPO_VERSION_URL = "https://raw.githubusercontent.com/iamluissosa/CalculadoraCrypto/main/version.json"
+REPO_RELEASE_URL = "https://github.com/iamluissosa/CalculadoraCrypto/actions"
 
 def main(page: ft.Page):
     # 1. Safe Initialization
@@ -14,25 +17,23 @@ def main(page: ft.Page):
         page.title = "Tasas Venezuela"
         page.theme_mode = ft.ThemeMode.DARK
         page.bgcolor = BG_COLOR
-        page.padding = 20
-        page.scroll = "AUTO"
+        page.padding = 0
         
         # State Container
         state = {
-            "rates": {"BCV": 0.0, "Paralelo": 0.0, "Binance": 0.0}
+            "rates": {"BCV": 0.0, "Euro": 0.0, "Paralelo": 0.0, "Binance": 0.0}
         }
 
         # --- CONTROLS ---
-        lbl_status = ft.Text("Listo. Presiona actualizar.", color="grey", size=12)
+        lbl_status = ft.Text("Desliza para actualizar...", color="grey", size=12)
         
         txt_bcv = ft.Text("0.00", size=20, weight="bold")
-        txt_euro = ft.Text("0.00", size=20, weight="bold") # New
+        txt_euro = ft.Text("0.00", size=20, weight="bold")
         txt_paralelo = ft.Text("0.00", size=20, weight="bold")
         txt_binance = ft.Text("0.00", size=20, weight="bold")
         txt_mixed = ft.Text("0.00", size=20, weight="bold")
         
         calc_input = ft.TextField(value="1", label="Monto (USD/EUR)", keyboard_type="number")
-        # Calculator results container
         calc_results_col = ft.Column(spacing=5)
         
         # --- P2P TABLE ---
@@ -52,8 +53,8 @@ def main(page: ft.Page):
         )
 
         # --- LOGIC ---
-        def fetch_data(e):
-            lbl_status.value = "Conectando..."
+        def fetch_data(e=None):
+            lbl_status.value = "Actualizando..."
             lbl_status.color = "yellow"
             page.update()
             
@@ -68,7 +69,6 @@ def main(page: ft.Page):
                     elif item['fuente'] == 'paralelo':
                         state['rates']['Paralelo'] = float(item['promedio'])
                 
-                # 2. DolarAPI (Euro)
                 # 2. Euro (ExchangeRate-API fallback for BCV equivalent)
                 try:
                     req_eur = Request("https://api.exchangerate-api.com/v4/latest/EUR", headers={"User-Agent": "Mozilla/5.0"})
@@ -107,11 +107,10 @@ def main(page: ft.Page):
                         min_limit = float(adv['minSingleTransAmount'])
                         max_limit = float(adv['dynamicMaxSingleTransAmount'])
                         methods = [m['identifier'] for m in adv['tradeMethods']][:2]
-                        methods_str = "\n".join(methods) # Multiline for better fit
+                        methods_str = "\n".join(methods)
 
                         profile_url = f"https://p2p.binance.com/es/advertiserDetail?advertiserNo={user_no}"
                         
-                        # Row
                         p2p_table.rows.append(
                             ft.DataRow(
                                 cells=[
@@ -133,19 +132,19 @@ def main(page: ft.Page):
                     avg_price = sum(prices) / len(prices)
                     state['rates']['Binance'] = avg_price
 
-                # Update Widgets
+                lbl_status.value = f"Actualizado: {time.strftime('%H:%M:%S')}"
+                lbl_status.color = "green"
+                # Update text fields
                 txt_bcv.value = f"{state['rates']['BCV']:,.2f}"
-                txt_euro.value = f"{state['rates'].get('Euro',0.0):,.2f}"
+                txt_euro.value = f"{state['rates']['Euro']:,.2f}"
                 txt_paralelo.value = f"{state['rates']['Paralelo']:,.2f}"
                 txt_binance.value = f"{state['rates']['Binance']:,.2f}"
-                
-                # Mixed
                 if state['rates']['BCV'] > 0 and state['rates']['Binance'] > 0:
                     mixed = (state['rates']['BCV'] + state['rates']['Binance']) / 2
                     txt_mixed.value = f"{mixed:,.2f}"
-                
-                lbl_status.value = f"Actualizado: {time.strftime('%H:%M:%S')}"
-                lbl_status.color = "green"
+                else:
+                    txt_mixed.value = "0.00"
+
                 calculate(None)
 
             except Exception as ex:
@@ -178,6 +177,42 @@ def main(page: ft.Page):
 
         calc_input.on_change = calculate
 
+        # --- AUTO UPDATE CHECK ---
+        def check_update():
+            try:
+                # Use threading to not block UI
+                req_ver = Request(REPO_VERSION_URL, headers={"User-Agent": "Mozilla/5.0"})
+                with urlopen(req_ver, timeout=3) as r:
+                    rem = json.loads(r.read().decode())
+                    if rem.get("version") != CURRENT_VERSION:
+                        # Show dialog on main thread
+                        def open_dlg():
+                            dlg = ft.AlertDialog(
+                                title=ft.Text("Nueva Versión Disponible"),
+                                content=ft.Text(f"Versión {rem.get('version')} disponible."),
+                                actions=[
+                                    ft.TextButton("Descargar", on_click=lambda e: page.launch_url(REPO_RELEASE_URL)),
+                                    ft.TextButton("Cerrar", on_click=lambda e: page.close_dialog())
+                                ],
+                            )
+                            page.dialog = dlg
+                            dlg.open = True
+                            page.update()
+                        open_dlg()
+                        # Flet's page.update() is usually thread-safe enough, but let's be careful.
+                        # Actually simpler:
+                        # page.dialog = ...
+                        # dlg.open = True
+                        # page.update()
+                        # This works from background threads in Flet usually.
+            except Exception as e:
+                print(f"Update check failed: {e}")
+
+        def initial_load():
+            time.sleep(0.5)
+            fetch_data()
+            check_update()
+
         # --- LAYOUT HELPER ---
         def card(title, val_ctl, color):
             return ft.Container(
@@ -189,8 +224,8 @@ def main(page: ft.Page):
                 expand=True
             )
 
-        # Assemble
-        page.add(
+        # Main Layout wrapped in RefreshIndicator
+        main_column = ft.Column([
             ft.Text("Monitor Venezuela", size=22, weight="bold"),
             lbl_status,
             ft.Divider(height=10, color="transparent"),
@@ -218,10 +253,20 @@ def main(page: ft.Page):
                 border_radius=10,
                 padding=5,
             ),
-            
-            ft.Divider(height=10, color="transparent"),
-            ft.ElevatedButton("Actualizar Todo", on_click=fetch_data, height=50, width=200, icon="refresh")
+            ft.Container(height=20) # Spacer at bottom
+        ], scroll="always") # Enable scroll on column
+
+        # Add everything to page via RefreshIndicator
+        page.add(
+            ft.RefreshIndicator(
+                on_refresh=fetch_data,
+                content=ft.Container(main_column, padding=20)
+            )
         )
+
+        # Start Background Load
+        import threading
+        threading.Thread(target=initial_load, daemon=True).start()
 
     except Exception as critical_e:
         page.add(ft.Text(f"CRITICAL ERROR: {critical_e}", color="red", size=20))
