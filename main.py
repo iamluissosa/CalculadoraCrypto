@@ -41,9 +41,9 @@ def main(page: ft.Page):
                 ft.DataColumn(ft.Text("Límites (Bs)")),
             ],
             rows=[],
-            border=ft.border.all(1, ft.colors.WHITE10),
-            vertical_lines=ft.border.all(1, ft.colors.WHITE10),
-            horizontal_lines=ft.border.all(1, ft.colors.WHITE10),
+            border=ft.border.all(1, "white10"),
+            vertical_lines=ft.border.all(1, "white10"),
+            horizontal_lines=ft.border.all(1, "white10"),
         )
 
         # --- LOGIC ---
