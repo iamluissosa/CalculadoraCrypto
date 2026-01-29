@@ -33,14 +33,27 @@ def main(page: ft.Page):
         calc_input = ft.TextField(value="1", label="Monto USD", keyboard_type="number")
         lbl_result = ft.Text("0.00 Bs", size=20, weight="bold", color="green")
 
+        # --- P2P TABLE COMPONENT ---
+        p2p_table = ft.DataTable(
+            columns=[
+                ft.DataColumn(ft.Text("Comerciante")),
+                ft.DataColumn(ft.Text("Precio"), numeric=True),
+                ft.DataColumn(ft.Text("Límites (Bs)")),
+            ],
+            rows=[],
+            border=ft.border.all(1, ft.colors.WHITE10),
+            vertical_lines=ft.border.all(1, ft.colors.WHITE10),
+            horizontal_lines=ft.border.all(1, ft.colors.WHITE10),
+        )
+
         # --- LOGIC ---
         def fetch_data(e):
-            lbl_status.value = "Conectando..."
+            lbl_status.value = "Conectando con Binance..."
             lbl_status.color = "yellow"
             page.update()
             
             try:
-                # 1. DolarAPI
+                # 1. DolarAPI (BCV/Paralelo)
                 req = Request("https://ve.dolarapi.com/v1/dolares", headers={"User-Agent": "Mozilla/5.0"})
                 with urlopen(req, timeout=5) as resp:
                     data = json.loads(resp.read().decode())
@@ -51,25 +64,60 @@ def main(page: ft.Page):
                     elif item['fuente'] == 'paralelo':
                         state['rates']['Paralelo'] = float(item['promedio'])
                 
-                # 2. Binance (Simple fallback check)
-                # Note: Skipping Binance complex fetch if it causes issues, keeping it simple for now or using a known reliable endpoint if available. 
-                # For this specific debug step, let's keep Binance strictly safe or mock it if network is fragile.
-                # Adding a safe try/except for just Binance
-                try:
-                    b_url = "https://p2p.binance.com/bapi/c2c/v2/friendly/c2c/adv/search"
-                    b_data = {"fiat": "VES", "page": 1, "rows": 1, "tradeType": "BUY", "asset": "USDT", "proMerchantAds": False}
-                    b_req = Request(b_url, data=json.dumps(b_data).encode(), headers={"Content-Type": "application/json"})
-                    with urlopen(b_req, timeout=5) as b_resp:
-                        b_json = json.loads(b_resp.read().decode())
-                        price = float(b_json['data'][0]['adv']['price'])
-                        state['rates']['Binance'] = price
-                except Exception as b_err:
-                    print(f"Binance error: {b_err}")
+                # 2. Binance P2P Detail Fetch
+                url = "https://p2p.binance.com/bapi/c2c/v2/friendly/c2c/adv/search"
+                payload = {
+                    "fiat": "VES", "page": 1, "rows": 10,  # Get top 10 for avg & list
+                    "tradeType": "BUY", "asset": "USDT", 
+                    "proMerchantAds": False, "publisherType": None
+                }
+                req_b = Request(url, data=json.dumps(payload).encode(), headers={"Content-Type": "application/json"})
+                
+                ads_list = []
+                avg_price = 0.0
+                
+                with urlopen(req_b, timeout=8) as resp_b:
+                    res_json = json.loads(resp_b.read().decode())
+                    raw_ads = res_json.get('data', [])
+                    
+                    prices = []
+                    p2p_table.rows.clear()
+                    
+                    for ad in raw_ads:
+                        adv = ad['adv']
+                        advertiser = ad['advertiser']
+                        
+                        price = float(adv['price'])
+                        prices.append(price)
+                        user_no = advertiser['userNo']
+                        nick = advertiser['nickName']
+                        
+                        # Limits
+                        min_limit = float(adv['minSingleTransAmount'])
+                        max_limit = float(adv['dynamicMaxSingleTransAmount'])
+                        
+                        # Build Row
+                        profile_url = f"https://p2p.binance.com/es/advertiserDetail?advertiserNo={user_no}"
+                        
+                        p2p_table.rows.append(
+                            ft.DataRow(
+                                cells=[
+                                    ft.DataCell(ft.Text(nick, size=12, w=80, no_wrap=True, overflow=ft.TextOverflow.ELLIPSIS)),
+                                    ft.DataCell(ft.Text(f"{price:,.2f}", weight="bold", size=12)),
+                                    ft.DataCell(ft.Text(f"{min_limit:,.0f} - {max_limit:,.0f}", size=10, color="grey")),
+                                ],
+                                on_select_changed=lambda e, u=profile_url: page.launch_url(u)
+                            )
+                        )
+                    
+                    if prices:
+                        avg_price = sum(prices) / len(prices)
+                        state['rates']['Binance'] = avg_price
 
-                # Update UI
+                # Update UI elements
                 txt_bcv.value = f"{state['rates']['BCV']:,.2f}"
                 txt_paralelo.value = f"{state['rates']['Paralelo']:,.2f}"
-                txt_binance.value = f"{state['rates']['Binance']:,.2f}"
+                txt_binance.value = f"{state['rates']['Binance']:,.2f}" # Average
                 
                 lbl_status.value = f"Actualizado: {time.strftime('%H:%M:%S')}"
                 lbl_status.color = "green"
@@ -127,6 +175,15 @@ def main(page: ft.Page):
             ft.Text("Calculadora Rápida", size=14, weight="bold"),
             calc_input,
             ft.Container(content=lbl_result, bgcolor=CARD_COLOR, padding=10, border_radius=5),
+            ft.Divider(),
+            ft.Text("Mercado Binance P2P (Top 10)", size=14, weight="bold"),
+            ft.Container(
+                content=p2p_table, 
+                bgcolor=CARD_COLOR, 
+                border_radius=10, 
+                padding=5,
+                scroll=ft.ScrollMode.ADAPTIVE
+            ),
             ft.Divider(),
             ft.ElevatedButton("Actualizar Datos", on_click=fetch_data, height=45, width=200)
         )
