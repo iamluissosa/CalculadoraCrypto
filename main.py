@@ -219,7 +219,7 @@ def main(page: ft.Page):
             ),
             
             ft.Divider(height=10, color="transparent"),
-            ft.ElevatedButton("Actualizar Todo", on_click=fetch_data, height=50, width=200, icon=ft.icons.REFRESH)
+            ft.ElevatedButton("Actualizar Todo", on_click=fetch_data, height=50, width=200, icon="refresh")
         )
 
     except Exception as critical_e:
