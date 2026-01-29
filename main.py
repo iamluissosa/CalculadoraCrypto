@@ -178,11 +178,10 @@ def main(page: ft.Page):
             ft.Divider(),
             ft.Text("Mercado Binance P2P (Top 10)", size=14, weight="bold"),
             ft.Container(
-                content=p2p_table, 
+                content=ft.Column([p2p_table], scroll="adaptive"), 
                 bgcolor=CARD_COLOR, 
                 border_radius=10, 
                 padding=5,
-                scroll=ft.ScrollMode.ADAPTIVE
             ),
             ft.Divider(),
             ft.ElevatedButton("Actualizar Datos", on_click=fetch_data, height=45, width=200)
