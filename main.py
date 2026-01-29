@@ -246,7 +246,16 @@ def main(page: ft.Page):
     page.add(refresh_ind)
     
     # Init
-    fetch_data()
-    check_update()
+    # Init - Threaded to prevent startup freeze (White/Blue screen)
+    import threading
+    
+    def initial_load():
+        # Small delay to ensure UI is painted
+        time.sleep(0.5) 
+        fetch_data()
+        check_update()
+
+    # Start initial load in background
+    threading.Thread(target=initial_load, daemon=True).start()
 
 ft.app(target=main)
